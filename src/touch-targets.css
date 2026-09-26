@@ -1,0 +1,36 @@
+/*
+ * COARSE POINTER TARGETS
+ * ---------------------------------------------------------------------------
+ * Touch targets must reach 44px on touch devices. Expanding the visual size of
+ * a 32px control would distort the layout, so `coarse-hit` grows only the
+ * *hit* area: an invisible ::after ring, centred on the control, that captures
+ * touches. Nothing about the control's appearance changes.
+ *
+ * WHY A SEPARATE STYLESHEET
+ * Tailwind treats any hand-written `@media` block in a processed stylesheet as
+ * candidate CSS and purges it unless it can match a generated class. Four
+ * placements were tried and all four were silently dropped from the
+ * production bundle: an attribute selector (`[data-hit]`), a Tailwind utility,
+ * a `addVariant`, and a PostCSS plugin. This file is imported after
+ * `./index.css` and is therefore appended verbatim, so the rule always ships.
+ *
+ * Verified present in the production bundle — do not fold this back into
+ * index.css without re-checking `dist/assets/*.css` for `pointer:coarse`.
+ */
+@media (pointer: coarse) {
+  .coarse-hit {
+    position: relative;
+  }
+
+  .coarse-hit::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+  }
+}
