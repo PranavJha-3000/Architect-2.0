@@ -22,8 +22,8 @@ export const Hero: React.FC = () => {
     <section className="mx-auto max-w-6xl px-6 pb-16 pt-16 md:px-8 md:pb-24 md:pt-24">
       <div className="mx-auto max-w-2xl text-center">
         <Eyebrow>{COPY.hero.eyebrow}</Eyebrow>
-        <h1 className="mt-4 text-[34px] font-semibold leading-[40px] tracking-tight text-paper md:text-[48px] md:leading-[54px]">
-          {COPY.hero.headline}
+        <h1 className="mt-4 text-balance text-[34px] font-semibold leading-[40px] tracking-tight text-paper md:text-[48px] md:leading-[54px]">
+          Vibe coding feels like <span className="text-accentRed">a group chat.</span>
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-body leading-relaxed text-muted">{COPY.hero.sub}</p>
         <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -33,12 +33,6 @@ export const Hero: React.FC = () => {
           >
             {COPY.hero.primary}
           </Link>
-          <a
-            href="#how"
-            className="inline-flex h-10 w-full items-center justify-center rounded-full border border-line bg-surface px-6 text-label font-medium text-paper transition-colors duration-instant hover:bg-bubble sm:w-auto"
-          >
-            {COPY.hero.secondary}
-          </a>
         </div>
         <p className="mt-5 font-mono text-[10px] tracking-wide text-faint">{COPY.hero.meta}</p>
       </div>
