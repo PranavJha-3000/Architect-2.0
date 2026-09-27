@@ -25,7 +25,7 @@ export const DemoSite: React.FC = () => {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-ink">
         <p className="text-sm text-muted">This deployment no longer exists.</p>
-        <Button onClick={() => navigate('/')}>Back to Architect</Button>
+        <Button onClick={() => navigate('/home')}>Back to Architect</Button>
       </div>
     )
   }
