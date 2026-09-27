@@ -16,13 +16,16 @@ export const SectionHead: React.FC<{ eyebrow: string; title: string; body?: stri
   </div>
 )
 
-/** Browser/app frame used by every product mock on the page. */
-export const MockShell: React.FC<{ url: string; children: React.ReactNode; className?: string }> = ({
+/** Browser/app frame used by every product mock on the page. `glass` is opt-in
+ * and used by the hero only — other scenes stay opaque so translucent
+ * surfaces never stack (Apple §12 legibility rule). */
+export const MockShell: React.FC<{ url: string; children: React.ReactNode; className?: string; glass?: boolean }> = ({
   url,
   children,
   className,
+  glass,
 }) => (
-  <div className={cx('overflow-hidden rounded-sm border border-line bg-surface', className)}>
+  <div className={cx('overflow-hidden rounded-sm border border-line', glass ? 'glass-frame' : 'bg-surface', className)}>
     <div className="flex items-center gap-2 border-b border-line px-3 py-2">
       <span className="flex gap-1" aria-hidden>
         <i className="h-2 w-2 rounded-full bg-action" />
