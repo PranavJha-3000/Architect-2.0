@@ -222,31 +222,20 @@
    */
   @media (max-width: 1180px) {
     .preview-pane {
-      width: 360px;
-      min-width: 340px;
+      width: 42%;
+      min-width: 360px;
     }
   }
-  /* Vibing yields first: the utility control disappears before Preview is
-     allowed to shrink, so the generated UI is never squeezed into a strip. */
+  /* The Vibing copy line yields first at narrow widths; the CTA itself
+     stays until the whole preview pane gives up below 900px. */
   @media (max-width: 1040px) {
-    .vibing-panel {
+    .vibing-copy {
       display: none;
     }
   }
   @media (max-width: 900px) {
     .preview-pane {
       display: none;
-    }
-  }
-  @media (max-width: 720px) {
-    .manager-rail {
-      position: relative;
-      z-index: 30;
-    }
-    .project-drawer {
-      position: absolute;
-      left: 64px;
-      z-index: 20;
     }
   }
 }
