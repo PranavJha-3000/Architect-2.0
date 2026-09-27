@@ -126,14 +126,14 @@ export const VibingChooser: React.FC<{ projectId: string }> = ({ projectId }) =>
             }
           }}
           className={cx(
-            'coarse-hit inline-flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-[12px]',
+            'coarse-hit inline-flex h-9 items-center gap-2 rounded-sm border px-4 text-[13px] font-medium',
             'transition-colors duration-instant ease-standard',
             session.phase === 'idle'
-              ? 'border-line text-muted hover:bg-surface hover:text-paper'
-              : 'border-accent/40 bg-surface text-paper',
+              ? 'border-line bg-surface text-paper hover:bg-bubble'
+              : 'border-accent/50 bg-surface text-paper hover:bg-bubble',
           )}
         >
-          <Film size={13} aria-hidden />
+          <Film size={14} className="text-accent" aria-hidden />
           Vibing
         </button>
       )}
