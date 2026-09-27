@@ -2,6 +2,8 @@ import React from 'react'
 import { useParams } from 'react-router-dom'
 import { useStore } from '../../store/store'
 import { cx } from './cx'
+import { AVATAR_TEMPLATES, resolveAvatarTemplate, templateGradient } from './avatarTemplates'
+import { Shuffle } from 'lucide-react'
 
 /**
  * IDENTITY — the one component that renders a Manager's face.
@@ -56,25 +58,44 @@ export const Identity: React.FC<{
   const ownerId = managerId ?? projectOwnerId
   const owner = ownerId ? managers.find((m) => m.id === ownerId) : undefined
   const active = activeManagerId ? managers.find((m) => m.id === activeManagerId) : undefined
+  // The onboarding draft is consulted only BEFORE setup ends (no Manager yet);
+  // once Managers exist, a missing field resolves locally — never to another
+  // Manager's photo, template or nickname.
+  const draft = !owner && !active
 
-  const avatar = owner?.avatar || (!ownerId ? active?.avatar : undefined) || onboarding.managerAvatar
+  const avatar =
+    owner?.avatar ||
+    (!ownerId ? active?.avatar : undefined) ||
+    (draft ? onboarding.managerAvatar : undefined)
+  const templateId =
+    owner?.templateId ??
+    (!ownerId ? active?.templateId : undefined) ??
+    (draft ? onboarding.managerTemplate : undefined)
   const label =
     name ||
     owner?.nickname ||
     (!ownerId ? active?.nickname : undefined) ||
-    onboarding.managerNickname ||
+    (draft ? onboarding.managerNickname : undefined) ||
     'The Manager'
 
   const { box, text } = SIZES[size]
 
+  // No uploaded photo → a gradient template, keyed by the same resolution
+  // order as the avatar so a Manager's colour is stable across sessions
+  // without any persisted migration.
+  const template = avatar
+    ? null
+    : resolveAvatarTemplate(templateId, ownerId || activeManagerId || 'onboarding')
+
   return (
     <span
       className={cx(
-        'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-action',
+        'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full',
         box,
         text,
         className,
       )}
+      style={template ? { background: templateGradient(template) } : undefined}
     >
       {avatar ? (
         <img
@@ -85,7 +106,7 @@ export const Identity: React.FC<{
           draggable={false}
         />
       ) : (
-        <span className="font-semibold text-paper" aria-hidden>
+        <span className="font-semibold text-white" aria-hidden>
           {initials(label)}
         </span>
       )}
@@ -113,4 +134,55 @@ export const SpecialistIdentity: React.FC<{
   >
     {name.slice(0, 2).toUpperCase()}
   </span>
+)
+
+/**
+ * TEMPLATE PICKER — the Manager PFP chooser.
+ *
+ * "Auto" keeps the deterministic hash, so every Manager gets a different
+ * colour for free; the swatches pin an explicit choice. An uploaded photo
+ * always wins over the template, so picking a colour never blocks upload.
+ */
+export const AvatarTemplatePicker: React.FC<{
+  value: string
+  onChange: (id: string) => void
+  className?: string
+}> = ({ value, onChange, className }) => (
+  <div className={cx('flex flex-col items-center gap-2', className)}>
+    <p className="text-[11px] font-medium uppercase tracking-wider text-muted">PFP template</p>
+    <div className="flex flex-wrap justify-center gap-2" role="radiogroup" aria-label="PFP template">
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === ''}
+        aria-label="Auto colour"
+        title="Auto — a unique colour per Manager"
+        onClick={() => onChange('')}
+        className={cx(
+          'flex h-7 w-7 items-center justify-center rounded-full border transition-colors duration-instant ease-standard',
+          value === ''
+            ? 'border-accent text-paper'
+            : 'border-line bg-surface text-muted hover:text-paper',
+        )}
+      >
+        <Shuffle size={12} aria-hidden />
+      </button>
+      {AVATAR_TEMPLATES.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="radio"
+          aria-checked={value === t.id}
+          aria-label={`${t.id} template`}
+          title={t.id}
+          onClick={() => onChange(t.id)}
+          className={cx(
+            'h-7 w-7 rounded-full transition-transform duration-instant ease-standard hover:scale-110',
+            value === t.id ? 'ring-2 ring-accent ring-offset-2 ring-offset-ink' : 'ring-1 ring-line',
+          )}
+          style={{ background: templateGradient(t) }}
+        />
+      ))}
+    </div>
+  </div>
 )
