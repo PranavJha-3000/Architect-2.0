@@ -13,6 +13,7 @@ import { FirstRun } from './pages/FirstRun'
 import { Identity } from './components/ui/Identity'
 import { EmptyState } from './components/ui/EmptyState'
 import { DemoSite } from './pages/DemoSite'
+import { Landing } from './pages/Landing'
 import { Onboarding } from './components/onboarding/Onboarding'
 import type { ChannelId } from './store/types'
 
@@ -28,8 +29,8 @@ const OnboardingRoute: React.FC = () => {
   const user = useStore((s) => s.user)
   const complete = useStore((s) => s.onboarding.complete)
   if (!user) return <Navigate to="/login" replace />
-  if (complete) return <Navigate to="/" replace />
-  return <Onboarding onDone={() => window.location.assign('/')} />
+  if (complete) return <Navigate to="/home" replace />
+  return <Onboarding onDone={() => window.location.assign('#/home')} />
 }
 
 /** Guards the workspace so a completed user can't re-enter onboarding. */
@@ -53,7 +54,7 @@ export const Home: React.FC = () => {
   const activeManagerId = useStore((s) => s.activeManagerId)
   const seedDemo = useStore((s) => s.seedDemo)
   const createProject = useStore((s) => s.createProject)
-  const setProjectDrawerOpen = useStore((s) => s.setProjectDrawerOpen)
+  const setExpandedManagerId = useStore((s) => s.setExpandedManagerId)
 
   useEffect(() => { seedDemo() }, [seedDemo])
 
@@ -67,7 +68,6 @@ export const Home: React.FC = () => {
 
   const handleNewProject = () => {
     const id = createProject()
-    setProjectDrawerOpen(false)
     navigate(`/p/${id}`)
   }
 
@@ -78,7 +78,7 @@ export const Home: React.FC = () => {
         title="Select a project"
         body="Pick a project to open its conversation with The Manager, or create a new one."
         actionLabel="View projects"
-        onAction={() => setProjectDrawerOpen(true)}
+        onAction={() => activeManagerId && setExpandedManagerId(activeManagerId)}
         secondaryLabel="New project"
         onSecondary={handleNewProject}
       />
@@ -96,12 +96,16 @@ const Touch: React.FC<{ view: string }> = ({ view }) => {
 const App: React.FC = () => (
   <>
     <Routes>
+      <Route path="/landing" element={<Navigate to="/" replace />} />
       <Route path="/login" element={<Auth />} />
       <Route path="/signup" element={<Auth />} />
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/demo/:projectId" element={<RequireAuth><DemoSite /></RequireAuth>} />
 
-      <Route path="/" element={<RequireOnboarded><AppShell /></RequireOnboarded>}>
+      {/* Public landing is the entry point. Authenticated workspace lives at /home. */}
+      <Route path="/" element={<Landing />} />
+
+      <Route path="/home" element={<RequireOnboarded><AppShell /></RequireOnboarded>}>
         <Route index element={<Home />} />
       </Route>
 
