@@ -22,7 +22,7 @@ export const HeroWorkspaceMock: React.FC<{ showProgress: boolean; filled: number
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-paper">streak-team</p>
           <p className="flex items-center gap-1 truncate text-[10px] text-faint">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />6 online · Manager + 5 specialists
+            <span className="h-1.5 w-1.5 rounded-full bg-accentRed" aria-hidden />6 online · Manager + 5 specialists
           </p>
         </div>
       </div>
