@@ -1,17 +1,20 @@
 import React, { useState } from 'react'
 import { useStore } from '../../store/store'
 import { ManagerAvatarUploader } from './ManagerAvatarUploader'
+import { AvatarTemplatePicker } from '../ui/Identity'
 import { OnboardingNav } from './OnboardingNav'
 import { cx } from '../ui/cx'
 
 /**
  * Screen 4. The canonical name is always "The Manager"; the nickname is an
- * optional display layer on top of it.
+ * optional display layer on top of it. The PFP is either an uploaded photo
+ * or one of the gradient templates — never a bare grey initial.
  */
 export const ManagerSetupForm: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const onboarding = useStore((s) => s.onboarding)
   const setManagerAvatar = useStore((s) => s.setManagerAvatar)
   const setManagerNickname = useStore((s) => s.setManagerNickname)
+  const setManagerTemplate = useStore((s) => s.setManagerTemplate)
   const completeOnboarding = useStore((s) => s.completeOnboarding)
   const prevOnboardingStep = useStore((s) => s.prevOnboardingStep)
   const [nickname, setNickname] = useState(onboarding.managerNickname)
@@ -32,6 +35,12 @@ export const ManagerSetupForm: React.FC<{ onDone: () => void }> = ({ onDone }) =
       <div className="mt-8">
         <ManagerAvatarUploader value={onboarding.managerAvatar} onChange={setManagerAvatar} />
       </div>
+
+      <AvatarTemplatePicker
+        className="mt-5"
+        value={onboarding.managerTemplate ?? ''}
+        onChange={setManagerTemplate}
+      />
 
       {/* Canonical identity, with the optional nickname layered underneath. */}
       <div className="mt-6 text-center">
