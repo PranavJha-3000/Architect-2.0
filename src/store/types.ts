@@ -25,8 +25,10 @@ export interface Manager {
   id: string
   /** Optional display nickname layered over the canonical "The Manager". */
   nickname: string
-  /** Avatar data URL (empty = initial-letter fallback). */
+  /** Avatar data URL (empty = gradient template fallback). */
   avatar: string
+  /** Optional gradient template id used when `avatar` is empty. */
+  templateId?: string
   createdAt: number
 }
 
@@ -272,6 +274,9 @@ export interface OnboardingState {
   integrations: Record<IntegrationId, IntegrationConnection>
   managerAvatar: string
   managerNickname: string
+  /** Chosen PFP template id ('' = auto). Optional so pre-template persisted
+   *  onboarding records merge without a migration. */
+  managerTemplate?: string
 }
 
 export interface IntegrationPhaseOption {

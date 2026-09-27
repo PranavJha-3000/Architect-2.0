@@ -35,6 +35,11 @@ interface AppState {
   toasts: Toast[]
   managerViewMode: 'conversations' | 'projects'
   projectDrawerOpen: boolean
+  /** Which Manager's section the sidebar accordion has open (null = collapsed). */
+  expandedManagerId: string | null
+  /** Mobile sidebar visibility; the sidebar is always present at the
+   *  desktop breakpoint regardless of this flag. */
+  sidebarOpen: boolean
   activeFile: Record<string, string>
   demoProjectId: string | null
   /** All Manager identities. The leftmost rail renders exactly this list. */
@@ -57,7 +62,7 @@ interface AppState {
   requestRevision: (projectId: string, text: string) => void
   togglePin: (id: string) => void
   /** Adds a Manager identity. Never creates a project. */
-  createManager: (input: { nickname: string; avatar: string }) => string
+  createManager: (input: { nickname: string; avatar: string; templateId?: string }) => string
   setActiveManager: (id: string) => void
   managerSend: (projectId: string, text: string) => void
   managerRoute: (projectId: string, channels: ChannelId[]) => void
@@ -79,6 +84,9 @@ interface AppState {
   setManagerViewMode: (v: 'conversations' | 'projects') => void
   setProjectDrawerOpen: (open: boolean) => void
   toggleProjectDrawer: () => void
+  setExpandedManagerId: (id: string | null) => void
+  setSidebarOpen: (v: boolean) => void
+  toggleSidebar: () => void
 
   initCanvas: (projectId: string, source: CanvasDoc['source'], elements?: CanvasEl[]) => void
   selectElement: (projectId: string, id: string | null) => void
@@ -114,6 +122,7 @@ interface AppState {
   disconnectIntegration: (id: IntegrationId) => void
   setManagerAvatar: (dataUrl: string) => void
   setManagerNickname: (nickname: string) => void
+  setManagerTemplate: (templateId: string) => void
   completeOnboarding: () => void
   resetOnboarding: () => void
 }
@@ -226,15 +235,17 @@ const initialOnboarding = (): OnboardingState => ({
   integrations: emptyConnections(),
   managerAvatar: '',
   managerNickname: '',
+  managerTemplate: '',
 })
 
 const stepIndex = (s: OnboardingStep) => Math.max(0, ONBOARDING_STEPS.indexOf(s))
 
-/** Default Manager identity, derived from the onboarding avatar/nickname. */
+/** Default Manager identity, derived from the onboarding avatar/nickname/template. */
 const defaultManagerFrom = (onboarding: OnboardingState): Manager => ({
   id: uid('mgr'),
   nickname: onboarding.managerNickname,
   avatar: onboarding.managerAvatar,
+  templateId: onboarding.managerTemplate || undefined,
   createdAt: Date.now(),
 })
 
@@ -276,6 +287,8 @@ export const useStore = create<AppState>()(
       toasts: [],
       managerViewMode: 'conversations',
       projectDrawerOpen: false,
+      expandedManagerId: null,
+      sidebarOpen: true,
       activeFile: {},
       demoProjectId: null,
       managers: [],
@@ -323,6 +336,7 @@ export const useStore = create<AppState>()(
       })),
       setManagerAvatar: (dataUrl) => set((s) => ({ onboarding: { ...s.onboarding, managerAvatar: dataUrl } })),
       setManagerNickname: (n) => set((s) => ({ onboarding: { ...s.onboarding, managerNickname: n } })),
+      setManagerTemplate: (templateId) => set((s) => ({ onboarding: { ...s.onboarding, managerTemplate: templateId } })),
       completeOnboarding: () => set((s) => {
         if (s.managers.length) return { onboarding: { ...s.onboarding, complete: true } }
         const m = defaultManagerFrom(s.onboarding)
@@ -356,7 +370,8 @@ export const useStore = create<AppState>()(
       /** Adds a Manager identity. Never creates a project. */
       createManager: (input) => {
         const m: Manager = {
-          id: uid('mgr'), nickname: input.nickname.trim(), avatar: input.avatar, createdAt: Date.now(),
+          id: uid('mgr'), nickname: input.nickname.trim(), avatar: input.avatar,
+          templateId: input.templateId || undefined, createdAt: Date.now(),
         }
         set((s) => ({ managers: [...s.managers, m], activeManagerId: m.id }))
         return m.id
@@ -737,6 +752,9 @@ export const useStore = create<AppState>()(
       setManagerViewMode: (v) => set({ managerViewMode: v }),
       setProjectDrawerOpen: (open) => set({ projectDrawerOpen: open }),
       toggleProjectDrawer: () => set((s) => ({ projectDrawerOpen: !s.projectDrawerOpen })),
+      setExpandedManagerId: (id) => set({ expandedManagerId: id }),
+      setSidebarOpen: (v) => set({ sidebarOpen: v }),
+      toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 
       // ---- Canvas (UI Head) ----
       initCanvas: (projectId, source, elements) => set((s) => {
