@@ -1,26 +1,26 @@
-import React, { useMemo, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../../store/store'
-import { agentById } from '../../store/roster'
 import { cx } from '../ui/cx'
 import { Row, UnreadDot } from '../ui/Row'
-import { Identity, SpecialistIdentity } from '../ui/Identity'
+import { Identity } from '../ui/Identity'
 import { SectionLabel } from '../ui/Surface'
 import { Popover, MenuItem } from '../ui/Popover'
-import { Search, Pin, PinOff, Plus, Archive, MoreHorizontal, ArrowLeft } from 'lucide-react'
+import { Search, Pin, PinOff, Plus, Archive, MoreHorizontal, ChevronDown } from 'lucide-react'
+import { AddManagerModal } from './AddManagerModal'
+import type { Manager, Project } from '../../store/types'
 
 /**
- * COLUMN 1 — the project / conversation drawer, 288px.
+ * COLUMN 0 — the Manager sidebar, 288px.
  *
- * Previously this file held two entirely separate list implementations that
- * shared nothing but CSS: project rows were 3 lines at `py-1.5`, conversation
- * rows were 2 lines at `py-2`. Sibling rows of different heights inside one
- * scroll container is one of the clearest signs of a product assembled rather
- * than designed.
+ * One sidebar owns search, the Manager list and each Manager's projects.
+ * It replaces the old pair of a 64px icon rail plus an overlay drawer —
+ * two separate surfaces for what is one navigation decision.
  *
- * Both are now the same `Row` primitive at a single 56px, so a project's
- * conversations line up with the project's own row no matter which list you
- * are looking at.
+ * The interaction mirrors Telegram topics: clicking a Manager expands its
+ * project list inline, and the row itself shrinks to just the PFP while
+ * expanded (the list carries the context, labelled by the Manager name).
+ * Clicking the PFP collapses the section again.
  */
 
 /** iMessage-style "now" / "2m" / "3h" / "2d" stamps. */
@@ -33,347 +33,308 @@ export const relStamp = (ts: number) => {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-/* ---------- Drawer header: back affordance + Manager identity ---------- */
-export interface DrawerHeaderProps {
-  title: string
-  sub: string
-  showBack: boolean
-  backTitle: string
-  onBack: () => void
-}
+/** Legacy rows may have no managerId — they belong to the active Manager. */
+const ownsProject = (p: Project, m: Manager, activeManagerId: string) =>
+  p.managerId ? p.managerId === m.id : m.id === activeManagerId
 
-export const DrawerHeader: React.FC<DrawerHeaderProps> = ({
-  title,
-  sub,
-  showBack,
-  backTitle,
-  onBack,
-}) => (
-  <div className="flex items-center gap-2 px-3 pb-2 pt-3">
-    {showBack ? (
-      <button
-        type="button"
-        onClick={onBack}
-        title={backTitle}
-        aria-label={backTitle}
-        className="coarse-hit flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-instant ease-standard hover:bg-surface hover:text-paper"
-      >
-        <ArrowLeft size={16} />
-      </button>
-    ) : (
-      <Identity size="sm" />
-    )}
-    <div className="min-w-0 flex-1">
-      <h2 className="truncate text-label font-semibold text-paper">{title}</h2>
-      <p className="truncate text-meta leading-tight text-muted">{sub}</p>
-    </div>
-  </div>
-)
-
-export const ProjectDrawer: React.FC<{
-  open?: boolean
-  onClose?: () => void
-  restoreFocusRef?: React.RefObject<HTMLElement | null>
-}> = ({ open: propOpen, onClose: propOnClose, restoreFocusRef }) => {
+export const ManagerSidebar: React.FC = () => {
   const { projectId = '' } = useParams()
   const navigate = useNavigate()
   const projects = useStore((s) => s.projects)
   const managers = useStore((s) => s.managers)
-  const activeManagerId = useStore((s) => s.activeManagerId)
   const threads = useStore((s) => s.threads)
-  const storeOpen = useStore((s) => s.projectDrawerOpen)
-  const setStoreOpen = useStore((s) => s.setProjectDrawerOpen)
+  const activeManagerId = useStore((s) => s.activeManagerId)
+  const expandedManagerId = useStore((s) => s.expandedManagerId)
+  const setExpandedManagerId = useStore((s) => s.setExpandedManagerId)
+  const setActiveManager = useStore((s) => s.setActiveManager)
+  const sidebarOpen = useStore((s) => s.sidebarOpen)
+  const setSidebarOpen = useStore((s) => s.setSidebarOpen)
   const togglePin = useStore((s) => s.togglePin)
   const archiveProject = useStore((s) => s.archiveProject)
   const createProject = useStore((s) => s.createProject)
   const restoreProject = useStore((s) => s.restoreProject)
   const pushToast = useStore((s) => s.pushToast)
   const [query, setQuery] = useState('')
-  const [leaving, setLeaving] = useState(false)
-  const panelRef = React.useRef<HTMLDivElement>(null)
+  const [addOpen, setAddOpen] = useState(false)
 
-  const isOpen = propOpen ?? storeOpen
-  const close = React.useCallback(() => {
-    setLeaving(true)
-    window.setTimeout(() => {
-      setLeaving(false)
-      if (propOnClose) propOnClose()
-      else setStoreOpen(false)
-      restoreFocusRef?.current?.focus()
-    }, 140)
-  }, [propOnClose, setStoreOpen, restoreFocusRef])
-
-  React.useEffect(() => {
-    if (!isOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        close()
-      }
-    }
-    document.addEventListener('keydown', onKey, true)
-    return () => {
-      document.removeEventListener('keydown', onKey, true)
-    }
-  }, [isOpen, close])
-
-  const newProject = () => {
-    const id = createProject()
-    close()
-    navigate(`/p/${id}`)
-  }
-
-  /** The drawer only ever lists the ACTIVE Manager's projects. */
-  const managerProjects = useMemo(
-    () => projects.filter((p) => !p.archived && (!p.managerId || p.managerId === activeManagerId)),
-    [projects, activeManagerId],
-  )
-  const manager = managers.find((m) => m.id === activeManagerId)
-  const managerName = manager?.nickname || 'The Manager'
-  const managerSub = manager?.nickname ? 'The Manager' : 'Projects'
+  // Switching Manager always opens its section — the same one-click flow as
+  // tapping a Telegram group. A manual collapse (null) survives until the
+  // next switch, so collapsing does not immediately fight this effect.
+  useEffect(() => {
+    if (activeManagerId) setExpandedManagerId(activeManagerId)
+  }, [activeManagerId, setExpandedManagerId])
 
   const q = query.trim().toLowerCase()
-  const visibleProjects = useMemo(
-    () =>
-      managerProjects
-        .filter((p) => !q || p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
-        .sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || b.lastMessageAt - a.lastMessageAt),
-    [managerProjects, q],
-  )
-  const pinnedProjects = visibleProjects.filter((p) => p.pinned)
-  const restProjects = visibleProjects.filter((p) => !p.pinned)
 
-  const selectProject = (id: string) => {
+  /** Flat cross-Manager results while a query is active. */
+  const searchHits = useMemo(() => {
+    if (!q) return null
+    const managerHits = managers.filter((m) =>
+      (m.nickname || 'the manager').toLowerCase().includes(q),
+    )
+    const projectHits = projects.filter(
+      (p) =>
+        !p.archived &&
+        (p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)),
+    )
+    return { managerHits, projectHits }
+  }, [q, managers, projects])
+
+  const openProject = (p: Project) => {
     setQuery('')
-    close()
-    navigate(`/p/${id}`)
+    if (p.managerId && p.managerId !== activeManagerId) setActiveManager(p.managerId)
+    setExpandedManagerId(p.managerId || activeManagerId)
+    setSidebarOpen(false)
+    navigate(`/p/${p.id}`)
     window.setTimeout(() => {
       document.querySelector<HTMLTextAreaElement>('[data-chat-composer]')?.focus()
     }, 60)
   }
 
-  const doArchive = (p: { id: string; name: string }) => {
+  /** One section open at a time; clicking the open one collapses it. */
+  const toggleManager = (m: Manager) => {
+    if (expandedManagerId === m.id) {
+      setExpandedManagerId(null)
+      return
+    }
+    if (m.id !== activeManagerId) setActiveManager(m.id)
+    setExpandedManagerId(m.id)
+  }
+
+  const newProject = () => {
+    const id = createProject()
+    setSidebarOpen(false)
+    navigate(`/p/${id}`)
+  }
+
+  const doArchive = (p: Project) => {
     archiveProject(p.id)
-    if (p.id === projectId) navigate('/')
+    if (p.id === projectId) navigate('/home')
     pushToast(`Archived “${p.name}”`, {
       label: 'Undo',
       run: () => restoreProject(p.id),
     })
   }
 
-  if (!isOpen) return null
+  const projectRow = (p: Project) => (
+    <ProjectRow
+      key={p.id}
+      p={p}
+      active={p.id === projectId}
+      unread={threads[`${p.id}:manager`]?.unread ?? 0}
+      onOpen={() => openProject(p)}
+      onTogglePin={() => togglePin(p.id)}
+      onArchive={() => doArchive(p)}
+    />
+  )
 
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${managerName}'s Projects`}
-      className="fixed inset-0 z-40 flex"
-    >
-      <div
-        className="fixed inset-0 bg-ink/60 transition-opacity duration-instant"
-        onClick={close}
-        aria-hidden
-      />
+  /** One Manager = one accordion section: row when closed, PFP when open. */
+  const renderManagerSection = (m: Manager) => {
+    const mine = projects
+      .filter((p) => !p.archived && ownsProject(p, m, activeManagerId))
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.lastMessageAt - a.lastMessageAt)
+    const unread = mine.reduce((n, p) => n + (threads[`${p.id}:manager`]?.unread ?? 0), 0)
+    const latest = mine[0]
+    const label = m.nickname || 'The Manager'
+    const expanded = expandedManagerId === m.id
+    const pinned = mine.filter((p) => p.pinned)
+    const rest = mine.filter((p) => !p.pinned)
 
-      <aside
-        ref={panelRef}
-        className={cx(
-          'relative z-10 ml-16 flex h-full w-72 shrink-0 flex-col border-r border-line bg-sidebar shadow-none',
-          leaving ? 'animate-sheet-out' : 'animate-sheet-in',
-        )}
-      >
-        <DrawerHeader
-          title={managerName}
-          sub={managerSub}
-          showBack={true}
-          backTitle="Close projects"
-          onBack={close}
-        />
-
-        <div className="flex flex-col gap-2 px-3 pb-2">
+    return (
+      <div key={m.id} className="mb-1">
+        {expanded ? (
+          /* Expanded: the row shrinks to the PFP — the list below is the
+             context now, so a full name row would only duplicate it. */
           <button
             type="button"
-            onClick={newProject}
-            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-sm border border-line bg-surface text-label font-medium text-paper transition-colors duration-instant ease-standard hover:bg-bubble"
+            onClick={() => setExpandedManagerId(null)}
+            aria-label={`Collapse ${label}`}
+            aria-expanded="true"
+            title={label}
+            className="coarse-hit flex h-9 w-full items-center rounded-sm px-1 transition-colors duration-instant ease-standard hover:bg-surface/60"
           >
-            <Plus size={14} /> New project
+            <Identity managerId={m.id} size="md" className="ring-1 ring-accent/50" />
+            <ChevronDown size={14} className="ml-auto text-muted" aria-hidden />
           </button>
-          {/* A search field is a field, not a second button. Previously this and
-              "New project" were two stacked bordered boxes competing equally. */}
-          <div className="flex h-8 items-center gap-2 rounded-sm bg-surface px-2.5">
+        ) : (
+          <Row
+            active={m.id === activeManagerId}
+            onClick={() => toggleManager(m)}
+            leading={<Identity managerId={m.id} size="md" />}
+            title={label}
+            preview={latest ? latest.name : 'No projects yet'}
+            trailing={
+              <>
+                {latest && (
+                  <span className="tabular text-[11px] text-muted">
+                    {relStamp(latest.lastMessageAt)}
+                  </span>
+                )}
+                {unread > 0 && <UnreadDot />}
+                <ChevronDown size={14} className="text-muted" aria-hidden />
+              </>
+            }
+            ariaLabel={`${label} — show projects`}
+          />
+        )}
+
+        {expanded && (
+          <div className="motion-safe:animate-rise pb-1">
+            <SectionLabel>{label}</SectionLabel>
+            <div className="space-y-0.5">
+              {pinned.map((p) => projectRow(p))}
+              {rest.map((p) => projectRow(p))}
+            </div>
+            {mine.length === 0 && (
+              <p className="px-2.5 py-3 text-center text-meta leading-relaxed text-muted">
+                No projects yet.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={newProject}
+              className="mt-1 flex h-8 w-full items-center justify-center gap-1.5 rounded-sm border border-line bg-surface text-label font-medium text-paper transition-colors duration-instant ease-standard hover:bg-bubble"
+            >
+              <Plus size={14} /> New project
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Mobile scrim — the sidebar is an overlay below the lg breakpoint
+          and a docked column above it (see `.manager-sidebar` in index.css
+          plus the `lg:` overrides below). */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-ink/60 transition-opacity duration-instant lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      <aside
+        aria-label="Managers"
+        className={cx(
+          'manager-sidebar absolute inset-y-0 left-0 z-40 flex h-full w-72 shrink-0 flex-col border-r border-line bg-sidebar',
+          'transition-transform duration-enter ease-standard',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          'lg:static lg:z-auto lg:translate-x-0',
+        )}
+      >
+        {/* Search + add: one field, one action — Grok's sidebar header. */}
+        <div className="flex items-center gap-2 px-3 pb-2 pt-3">
+          <div className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-sm bg-surface px-2.5">
             <Search size={13} className="shrink-0 text-muted" aria-hidden />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search projects"
-              aria-label="Search projects"
+              placeholder="Search"
+              aria-label="Search managers and projects"
               className="min-w-0 flex-1 bg-transparent text-label text-paper placeholder:text-faint focus:outline-none"
             />
           </div>
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            title="Add Manager"
+            aria-label="Add Manager"
+            className="coarse-hit flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-muted transition-colors duration-instant ease-standard hover:bg-surface hover:text-paper"
+          >
+            <Plus size={15} />
+          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-2 pb-2">
-          {pinnedProjects.length > 0 && (
+          {searchHits ? (
             <>
-              <SectionLabel>Pinned</SectionLabel>
-              <div className="space-y-0.5">
-                {pinnedProjects.map((p) => (
-                  <ProjectRow
-                    key={p.id}
-                    p={p}
-                    active={p.id === projectId}
-                    unread={threads[p.id + ':manager']?.unread ?? 0}
-                    onOpen={() => selectProject(p.id)}
-                    onTogglePin={() => togglePin(p.id)}
-                    onArchive={() => doArchive(p)}
-                  />
-                ))}
-              </div>
+              {searchHits.managerHits.length === 0 && searchHits.projectHits.length === 0 && (
+                <p className="px-2 py-6 text-center text-meta leading-relaxed text-muted">
+                  No matches.
+                </p>
+              )}
+              {searchHits.managerHits.length > 0 && (
+                <>
+                  <SectionLabel>Managers</SectionLabel>
+                  <div className="space-y-0.5">
+                    {searchHits.managerHits.map((m) => (
+                      <Row
+                        key={m.id}
+                        onClick={() => {
+                          setQuery('')
+                          toggleManager(m)
+                        }}
+                        leading={<Identity managerId={m.id} size="md" />}
+                        title={m.nickname || 'The Manager'}
+                        preview="Manager"
+                        ariaLabel={`${m.nickname || 'The Manager'} — show projects`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              {searchHits.projectHits.length > 0 && (
+                <>
+                  <SectionLabel className={searchHits.managerHits.length ? 'mt-2' : undefined}>
+                    Projects
+                  </SectionLabel>
+                  <div className="space-y-0.5">
+                    {searchHits.projectHits.map((p) => {
+                      const ownerName =
+                        managers.find((m) => m.id === p.managerId)?.nickname || 'The Manager'
+                      return (
+                        <Row
+                          key={p.id}
+                          active={p.id === projectId}
+                          onClick={() => openProject(p)}
+                          leading={<Identity managerId={p.managerId} size="sm" />}
+                          title={p.name}
+                          preview={
+                            <>
+                              <span className="text-faint">{ownerName} · </span>
+                              {p.lastMessage || p.description || 'No messages yet'}
+                            </>
+                          }
+                          trailing={
+                            <span className="tabular text-[11px] text-muted">
+                              {relStamp(p.lastMessageAt)}
+                            </span>
+                          }
+                          ariaLabel={p.name}
+                        />
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </>
-          )}
-          {restProjects.length > 0 && (
-            <>
-              <SectionLabel className={cx(pinnedProjects.length > 0 && 'mt-2')}>
-                Projects
-              </SectionLabel>
-              <div className="space-y-0.5">
-                {restProjects.map((p) => (
-                  <ProjectRow
-                    key={p.id}
-                    p={p}
-                    active={p.id === projectId}
-                    unread={threads[p.id + ':manager']?.unread ?? 0}
-                    onOpen={() => selectProject(p.id)}
-                    onTogglePin={() => togglePin(p.id)}
-                    onArchive={() => doArchive(p)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-          {visibleProjects.length === 0 && (
+          ) : managers.length === 0 ? (
             <p className="px-2 py-6 text-center text-meta leading-relaxed text-muted">
-              {q ? 'No projects match that search.' : 'No projects yet.'}
+              No Managers yet — use + to add one.
             </p>
+          ) : (
+            managers.map((m) => renderManagerSection(m))
           )}
         </div>
       </aside>
-    </div>
-  )
-}
 
-
-export const ProjectConversationList: React.FC = () => {
-  const { projectId = '' } = useParams()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const managers = useStore((s) => s.managers)
-  const activeManagerId = useStore((s) => s.activeManagerId)
-  const projects = useStore((s) => s.projects)
-  const threads = useStore((s) => s.threads)
-  const setManagerViewMode = useStore((s) => s.setManagerViewMode)
-
-  const currentProject = projects.find(
-    (p) => p.id === projectId && !p.archived && (!p.managerId || p.managerId === activeManagerId),
-  )
-  if (!currentProject) return null
-
-  const pathname = location.pathname
-  const isManagerChat = pathname === `/p/${projectId}`
-  const threadParts = pathname.split('/thread/')
-  const activeChannelId = threadParts.length > 1 ? threadParts[1] : null
-
-  const manager = managers.find((m) => m.id === activeManagerId)
-  const managerName = manager?.nickname || 'The Manager'
-  const managerSub = manager?.nickname ? 'The Manager' : currentProject.name
-  const managerThread = threads[`${projectId}:manager`]
-  const unreadManager = managerThread?.unread ?? 0
-  const team = currentProject.team || []
-
-  return (
-    <aside className="project-drawer flex h-full w-72 shrink-0 flex-col border-r border-line bg-sidebar">
-      <DrawerHeader
-        title={managerName}
-        sub={managerSub}
-        showBack
-        backTitle="Back to projects"
-        onBack={() => setManagerViewMode('projects')}
-      />
-
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-2 pb-2">
-        {/* The Manager conversation and the specialists are the same kind of
-            thing: a conversation. They now share one row geometry. */}
-        <div className="space-y-0.5">
-          <Row
-            active={isManagerChat}
-            onClick={() => navigate(`/p/${projectId}`)}
-            leading={<Identity size="sm" />}
-            title={currentProject.name}
-            preview={
-              <>
-                <span className="text-faint">The Manager · </span>
-                {currentProject.lastMessage || managerThread?.lastPreview || 'No messages yet'}
-              </>
-            }
-            trailing={
-              <>
-                <span className="tabular text-[11px] text-muted">
-                  {relStamp(currentProject.lastMessageAt)}
-                </span>
-                {unreadManager > 0 && <UnreadDot />}
-              </>
-            }
-            ariaLabel={`Manager conversation for ${currentProject.name}`}
-          />
-        </div>
-
-        {team.length > 0 && (
-          <div className="mt-0.5 space-y-0.5">
-            {team.map((ch) => {
-              const ag = agentById(ch)
-              const chThread = threads[`${projectId}:${ch}`]
-              const unread = chThread?.unread ?? 0
-              const last = chThread?.messages[chThread.messages.length - 1]
-
-              return (
-                <Row
-                  key={ch}
-                  active={activeChannelId === ch}
-                  onClick={() => navigate(`/p/${projectId}/thread/${ch}`)}
-                  leading={<SpecialistIdentity name={ag.name} size="sm" />}
-                  title={ag.name}
-                  preview={chThread?.lastPreview || ag.role}
-                  trailing={
-                    <>
-                      {last && (
-                        <span className="tabular text-[11px] text-muted">{relStamp(last.ts)}</span>
-                      )}
-                      {unread > 0 && <UnreadDot />}
-                    </>
-                  }
-                  ariaLabel={`${ag.name} conversation`}
-                />
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </aside>
+      <AddManagerModal open={addOpen} onClose={() => setAddOpen(false)} />
+    </>
   )
 }
 
 /**
- * PROJECT ROW — the same `Row` primitive as the conversation list.
+ * PROJECT ROW — the same `Row` primitive as every other list.
  *
- * The third description line is gone: it sat at 55% opacity, below the
- * legibility floor, and competed with the message preview directly above it.
- * The pin control and the overflow menu are now genuinely keyboard reachable —
- * previously the overflow button was `opacity-0` until hover, so it was
- * focusable but invisible while focused.
+ * Pin and overflow actions are genuinely keyboard reachable: they sit
+ * outside the row button (so they don't trigger navigation) and become
+ * visible on `focus-within` as well as hover.
  */
 const ProjectRow: React.FC<{
-  p: any
+  p: Project
   active: boolean
   unread: number
   onOpen: () => void
@@ -383,19 +344,14 @@ const ProjectRow: React.FC<{
   <Row
     active={active}
     onClick={onOpen}
-    leading={<Identity size="sm" />}
+    leading={<Identity managerId={p.managerId} size="sm" />}
     title={
       <span className="flex items-center gap-1.5">
         <span className="truncate">{p.name}</span>
         {p.pinned && <Pin size={11} className="shrink-0 text-muted" aria-label="Pinned" />}
       </span>
     }
-    preview={
-      <>
-        <span className="text-faint">The Manager · </span>
-        {p.lastMessage || 'No messages yet'}
-      </>
-    }
+    preview={p.lastMessage || 'No messages yet'}
     trailing={
       <>
         <span className="tabular text-[11px] text-muted">{relStamp(p.lastMessageAt)}</span>

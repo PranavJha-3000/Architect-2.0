@@ -48,6 +48,8 @@ export const TopBar: React.FC<{ title?: string; subtitle?: string; onBack?: () =
   // So: select the raw slice, and derive below.
   const projects = useStore((s) => s.projects)
   const threads = useStore((s) => s.threads)
+  const sidebarOpen = useStore((s) => s.sidebarOpen)
+  const toggleSidebar = useStore((s) => s.toggleSidebar)
   const project = projectId ? projects.find((p) => p.id === projectId) : undefined
   const managerThread = threads[`${projectId}:manager`]
 
@@ -109,10 +111,11 @@ export const TopBar: React.FC<{ title?: string; subtitle?: string; onBack?: () =
       ) : (
         <button
           type="button"
-          onClick={() => useStore.getState().toggleProjectDrawer()}
-          title="Open projects"
-          aria-label="Open projects"
-          className="flex shrink-0 items-center rounded-full transition-transform duration-instant ease-standard active:scale-95"
+          onClick={() => toggleSidebar()}
+          title="Toggle sidebar"
+          aria-label="Toggle sidebar"
+          aria-expanded={sidebarOpen}
+          className="coarse-hit flex shrink-0 items-center rounded-full transition-transform duration-instant ease-standard active:scale-95 lg:hidden"
         >
           <Identity managerId={project?.managerId} size="md" />
         </button>
