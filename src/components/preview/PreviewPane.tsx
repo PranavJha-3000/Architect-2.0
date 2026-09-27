@@ -15,6 +15,7 @@ export const PreviewPane: React.FC = () => {
   const { projectId = '' } = useParams()
   const navigate = useNavigate()
   const project = useStore((s) => s.projects.find((p) => p.id === projectId))
+  const managers = useStore((s) => s.managers)
   const build = useStore((s) => s.builds[projectId])
   const preview = useStore((s) => s.previews[projectId])
   const setViewport = useStore((s) => s.setViewport)
@@ -26,6 +27,10 @@ export const PreviewPane: React.FC = () => {
   const revealed = preview?.revealed ?? 0
   const viewport = preview?.viewport ?? 'desktop'
   const [copied, setCopied] = useState(false)
+
+  /** Grok's caption under the well: "{Bot}'s screen" → "{Manager}'s screen". */
+  const managerLabel =
+    managers.find((m) => m.id === project?.managerId)?.nickname || 'The Manager'
 
   const doc = useMemo(
     () => (project ? buildDoc(project.previewTemplateId, revealed, project.name) : ''),
@@ -41,7 +46,7 @@ export const PreviewPane: React.FC = () => {
   const widths = { desktop: '100%', tablet: '720px', mobile: '390px' }
 
   return (
-    <aside className="preview-pane flex h-full w-[36%] min-w-[340px] max-w-[520px] shrink-0 flex-col border-l border-line bg-ink">
+    <aside className="preview-pane flex h-full w-[46%] min-w-[400px] max-w-[640px] shrink-0 flex-col border-l border-line bg-ink">
       <div className="preview-block flex min-h-0 flex-1 flex-col">
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
           <span className="text-[12px] font-medium text-muted">Preview</span>
@@ -79,14 +84,15 @@ export const PreviewPane: React.FC = () => {
        * fills that height exactly. Nothing here scrolls. Only the generated
        * document inside the iframe scrolls, which is the correct behaviour.
        *
-       * The border and radius are gone as well: the Preview is a device
-       * surface, not a card sitting inside a card.
+       * The well is inset with a radius like Grok's device surface — a black
+       * stage on the pane, not a card sitting inside a card.
        */}
-      <div
-        role="region"
-        aria-label="Preview"
-        className="relative flex min-h-0 flex-1 items-stretch justify-center overflow-hidden bg-ink"
-      >
+      <div className="flex min-h-0 flex-1 flex-col px-3 pt-3">
+        <div
+          role="region"
+          aria-label="Preview"
+          className="relative flex min-h-0 flex-1 items-stretch justify-center overflow-hidden rounded-md bg-black"
+        >
         {mode === 'idle' && (
           <div className="flex h-full w-full items-center justify-center">
             <EmptyState
@@ -124,6 +130,10 @@ export const PreviewPane: React.FC = () => {
             />
           </div>
         )}
+        </div>
+        <p className="shrink-0 py-2 text-center text-[11px] text-muted">
+          {managerLabel}&rsquo;s screen
+        </p>
       </div>
 
       <div className="flex h-9 shrink-0 items-center gap-2 border-t border-line px-3">
@@ -151,14 +161,18 @@ export const PreviewPane: React.FC = () => {
       </div>
 
       {/*
-       * The utility area. `shrink-0` means it takes exactly the height its
-       * content needs and Preview absorbs the rest — Vibing yields first by
-       * construction, rather than via a percentage that fights the layout.
+       * The Vibing block sits LAST — Grok's "Create Routine" position. The
+       * copy yields first at narrow widths (`.vibing-copy`), then the whole
+       * preview pane, so the CTA is never squeezed into a strip.
        */}
       {session.phase === 'music' && <MusicPlayer />}
 
-      <div className="vibing-panel flex h-10 shrink-0 items-center justify-end border-t border-line px-3">
+      <div className="vibing-panel flex shrink-0 flex-col items-center gap-3 border-t border-line px-4 py-4">
         <BrainrotLifecycle projectId={projectId} />
+        <p className="vibing-copy max-w-[38ch] text-center text-[12px] leading-relaxed text-muted">
+          Vibing opens a feed in the background while your team builds — pick a source, or paste a
+          link.
+        </p>
         <VibingChooser projectId={projectId} />
       </div>
     </aside>
