@@ -2,18 +2,13 @@
 
 export const COPY = {
   nav: {
-    product: 'Product',
-    how: 'How it works',
-    github: 'GitHub',
-    docs: 'Docs',
     start: 'Start building',
   },
   hero: {
     eyebrow: 'ARCHITECT 2.0',
-    headline: 'Vibe Coding. Feels Like a Group Chat.',
+    headline: 'Vibe coding feels like a group chat.',
     sub: 'You talk to a Manager, the Manager brings in specialist agents, and the team plans, builds, reviews, previews, and ships your product.',
     primary: 'Start building',
-    secondary: 'See how it works',
     meta: 'Manager · Specialists · Preview · Code · GitHub · Deploy',
   },
   proof: [
