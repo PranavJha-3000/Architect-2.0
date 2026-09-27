@@ -39,6 +39,7 @@ export default {
         accentHover: '#0a84ff',
         accentPurple: '#7c3aed', // --accent-purple — badges, highlights
         accentPurpleSoft: '#a78bfa',
+        accentRed: '#ff453a', // --accent-red — Apple system red (dark), headline + live accents only, never CTA
 
         /* Text. Hierarchy comes from size and weight, never
            from opacity — so `text-muted/60` and friends no longer exist. */
