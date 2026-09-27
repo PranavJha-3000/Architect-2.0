@@ -28,6 +28,7 @@
   --accent-blue-hover: #0a84ff;
   --accent-purple: #7c3aed;
   --accent-purple-soft: #a78bfa;
+  --accent-red: #ff453a;
 
   /* Tailwind-mirrored planes (aliases of --bg-* above). */
   --plane-0: var(--bg-app); /* app background, chat canvas */
