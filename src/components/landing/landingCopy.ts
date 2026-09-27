@@ -10,8 +10,8 @@ export const COPY = {
   },
   hero: {
     eyebrow: 'ARCHITECT 2.0',
-    headline: 'Talk to your team, not your terminal.',
-    sub: 'Describe the product. Your Manager brings in the right specialists, builds it with you, and hands back preview, code, and a deploy.',
+    headline: 'Vibe Coding. Feels Like a Group Chat.',
+    sub: 'You talk to a Manager, the Manager brings in specialist agents, and the team plans, builds, reviews, previews, and ships your product.',
     primary: 'Start building',
     secondary: 'See how it works',
     meta: 'Manager · Specialists · Preview · Code · GitHub · Deploy',
