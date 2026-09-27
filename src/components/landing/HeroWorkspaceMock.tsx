@@ -20,8 +20,10 @@ export const HeroWorkspaceMock: React.FC<{ showProgress: boolean; filled: number
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-white">M</span>
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-paper">The Manager</p>
-          <p className="truncate text-[10px] text-faint">streak-tracker</p>
+          <p className="truncate text-[12px] font-medium text-paper">streak-team</p>
+          <p className="flex items-center gap-1 truncate text-[10px] text-faint">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />6 online · Manager + 5 specialists
+          </p>
         </div>
       </div>
       <p className="px-1 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-faint">Channels</p>
