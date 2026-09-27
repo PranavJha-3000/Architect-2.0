@@ -214,6 +214,47 @@
   }
 
   /*
+   * LIQUID GLASS — landing floating chrome only (Apple Design §12).
+   * Nav, hero frame and small chips. Content sections stay opaque ink/surface;
+   * translucent surfaces never stack. Bright top edge = light on the material.
+   * Vibrancy rule: text on glass keeps paper weight, never flat gray.
+   */
+  .glass-nav {
+    background: rgba(18, 18, 20, 0.6);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+  .glass-frame {
+    background: rgba(24, 24, 27, 0.55);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  }
+  .glass-chip {
+    background: rgba(38, 38, 42, 0.5);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-nav { background: var(--plane-0); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+    .glass-frame { background: var(--plane-2); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+    .glass-chip { background: var(--control); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+  @media (prefers-contrast: more) {
+    .glass-nav, .glass-frame, .glass-chip {
+      background: #000;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      border: 1px solid var(--text-primary);
+    }
+  }
+
+  /*
    * Desktop-first. The conversation is the hero, so it is the LAST thing to
    * lose width: the right panel gives up space before the chat narrows, and
    * the drawer collapses before the rail moves.
