@@ -2,33 +2,36 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../store/store'
 import { ManagerAvatarUploader } from '../onboarding/ManagerAvatarUploader'
+import { AvatarTemplatePicker } from '../ui/Identity'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 
 /**
- * Compact "+ Add Manager" experience: avatar upload, fixed "The Manager"
- * title, optional nickname, Create Manager. Creates only the Manager
- * identity — never a project. After creation the new Manager is selected
- * and its (empty) project drawer is shown.
+ * Compact "+ Add Manager" experience: avatar upload or a gradient PFP
+ * template, fixed "The Manager" title, optional nickname, Create Manager.
+ * Creates only the Manager identity — never a project. After creation the
+ * new Manager is selected and its (empty) project section is shown.
  */
 export const AddManagerModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const navigate = useNavigate()
   const createManager = useStore((s) => s.createManager)
   const setManagerViewMode = useStore((s) => s.setManagerViewMode)
   const [avatar, setAvatar] = useState('')
+  const [templateId, setTemplateId] = useState('')
   const [nickname, setNickname] = useState('')
 
   const close = () => {
     setAvatar('')
+    setTemplateId('')
     setNickname('')
     onClose()
   }
 
   const create = () => {
-    createManager({ nickname, avatar })
+    createManager({ nickname, avatar, templateId })
     setManagerViewMode('projects')
     close()
-    navigate('/')
+    navigate('/home')
   }
 
   return (
@@ -47,6 +50,7 @@ export const AddManagerModal: React.FC<{ open: boolean; onClose: () => void }> =
     >
       <div className="flex flex-col items-center">
         <ManagerAvatarUploader value={avatar} onChange={setAvatar} />
+        <AvatarTemplatePicker className="mt-4" value={templateId} onChange={setTemplateId} />
         <p className="mt-4 text-[16px] font-semibold text-paper">The Manager</p>
         {nickname.trim() && (
           <p className="mt-0.5 text-[13px] text-muted">{nickname.trim()}</p>

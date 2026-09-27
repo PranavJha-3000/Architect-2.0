@@ -1,7 +1,6 @@
 import React from 'react'
 import { Outlet, useLocation, useParams } from 'react-router-dom'
-import { ManagerRail } from './ManagerRail'
-import { ProjectDrawer } from './Sidebar'
+import { ManagerSidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { PreviewPane } from '../preview/PreviewPane'
 import { useReturnSignal, useVibingSession, closeHandoff } from '../vibing/session'
@@ -9,15 +8,19 @@ import { useStore } from '../../store/store'
 
 /**
  * Workspace:
- *   [Manager rail 64][Project / conversation drawer 288][Main][Preview + Vibing]
+ *   [Manager sidebar 288][TopBar + main][Preview + Vibing CTA]
+ *
+ * One sidebar owns search, the Manager list and each Manager's projects —
+ * the old 64px identity rail and its overlay drawer are gone; below the
+ * `lg` breakpoint the sidebar becomes a slide-over with a scrim instead.
  *
  * `100dvh` rather than `100vh`: on mobile the latter is taller than the
  * viewport once browser chrome is accounted for, which pushed the composer
  * under the URL bar.
  *
  * Canvas is a true full-bleed mode — the right panel hides there. On every
- * other project screen the right panel is visible: Preview above, with Vibing
- * as a single compact control beneath it.
+ * other project screen the right panel is visible: Preview above, with the
+ * Vibing CTA as the last block beneath it.
  */
 
 /**
@@ -56,24 +59,10 @@ export const AppShell: React.FC = () => {
   const isCanvas = pathname.endsWith('/canvas')
   const hasProject = pathname.startsWith('/p/')
   const showRightPanel = !isCanvas && hasProject
-  const activeManagerId = useStore((s) => s.activeManagerId)
-  const managerTriggerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({})
-
-  const handleManagerTriggerRef = React.useCallback((id: string, el: HTMLButtonElement | null) => {
-    managerTriggerRefs.current[id] = el
-  }, [])
-
-  const currentTriggerRef = React.useMemo(() => ({
-    get current() {
-      return managerTriggerRefs.current[activeManagerId] || null
-    }
-  }), [activeManagerId])
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden bg-ink">
-      <div className="h-full shrink-0">
-        <ManagerRail onManagerTriggerRef={handleManagerTriggerRef} />
-      </div>
+    <div className="relative flex h-[100dvh] w-screen overflow-hidden bg-ink">
+      <ManagerSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
         <div className="flex min-h-0 flex-1">
@@ -83,7 +72,6 @@ export const AppShell: React.FC = () => {
           {showRightPanel && <PreviewPane />}
         </div>
       </div>
-      <ProjectDrawer restoreFocusRef={currentTriggerRef} />
       <ReturnNotice />
     </div>
   )
